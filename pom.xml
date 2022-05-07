@@ -9,7 +9,20 @@
     <version>1.0-SNAPSHOT</version>
 	<name>commandline parser</name>
 	<description>A simple command line arguments parser</description>
-	
+
+    <scm>
+        <developerConnection>scm:git:git@github.com:mflament/commandline.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>commandline</id>
+            <name>GitHub mflament Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/mflament/commandline</url>
+        </repository>
+    </distributionManagement>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -37,6 +50,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
