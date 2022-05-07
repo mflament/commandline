@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.yah.tools</groupId>
     <artifactId>commandline</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
 	<name>commandline parser</name>
 	<description>A simple command line arguments parser</description>
 
     <scm>
         <developerConnection>scm:git:git@github.com:mflament/commandline.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>commandline-1.0</tag>
     </scm>
 
     <distributionManagement>
