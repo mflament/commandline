@@ -9,44 +9,50 @@ import java.util.*;
  * @param options     the command line options per name. An option is an argument matching the name and an optional argument
  *                    ofr option's value.
  */
-public record CommandLineDefinition(String programName, @Nullable Parameter parameter, List<Option> options, Map<String, Option> optionsMap) {
+public record CommandLineDefinition(String programName, @Nullable Parameter parameter, List<Option> options,
+                                    Map<String, Option> optionsMap) {
 
     public CommandLine parse(String... args) {
-        List<String> parsedArguments = new ArrayList<>();
-        Map<String, String> optionValues = new LinkedHashMap<>();
+        List<String> parsedParameters = null;
+        Map<Option, String> optionValues = new LinkedHashMap<>();
         ArgsQueue argsQueue = new ArgsQueue(args);
         while (argsQueue.hasNext()) {
             String arg = argsQueue.next();
             Option option = optionsMap.get(arg);
             if (option != null) {
-                if (option.argName != null) {
-                    String optionValue;
-                    if (argsQueue.hasOptionValue()) {
-                        optionValue =  argsQueue.next();
-                    } else if (option.defaultValue != null) {
-                        optionValue =  option.defaultValue;
-                    } else {
-                        String message = String.format("Option %s requires argument %s", arg, option.argName);
-                        throw newCommandLineParsingException(message);
-                    }
-                    option.names().forEach(name -> optionValues.put(name, optionValue));
-                } else {
-                    optionValues.put(arg, null);
-                }
+                parseOption(arg, option, argsQueue, optionValues);
             } else {
-                parsedArguments.add(arg);
+                if (parsedParameters == null)
+                    parsedParameters = new ArrayList<>();
+                parsedParameters.add(arg);
             }
         }
 
         if (parameter != null) {
-            if (parsedArguments.isEmpty()) {
+            if (parsedParameters == null) {
                 if (parameter.required)
-                    throw newCommandLineParsingException("Missing required parameter " + parameter.name);
-                parsedArguments.addAll(parameter.defaultValue());
+                    throw newCommandLineParsingException("Missing required parameter '" + parameter.name + "'");
+                parsedParameters = parameter.defaultValue();
             }
+        } else {
+            parsedParameters = List.of();
         }
 
-        return new CommandLine(this, List.copyOf(parsedArguments), Collections.unmodifiableMap(optionValues));
+        return new CommandLine(this, List.copyOf(parsedParameters), Collections.unmodifiableMap(optionValues));
+    }
+
+    private void parseOption(String optionName, Option option, ArgsQueue argsQueue, Map<Option, String> optionValues) {
+        String optionValue = option.defaultValue();
+
+        if (option.argName() != null) {
+            if (!argsQueue.hasOptionValue()) {
+                String message = String.format("Option '%s' requires argument '%s'", optionName, option.argName);
+                throw newCommandLineParsingException(message);
+            }
+            optionValue = argsQueue.next();
+        }
+
+        optionValues.put(option, optionValue);
     }
 
     public String help() {
@@ -68,9 +74,8 @@ public record CommandLineDefinition(String programName, @Nullable Parameter para
         return sb.toString();
     }
 
-    private CommandLineParsingException newCommandLineParsingException(String message, String... args) {
-        String fullMessage = String.format("Error parsing %s%n%s%n%s",
-                String.join(" ", args), message, help());
+    private CommandLineParsingException newCommandLineParsingException(String message) {
+        String fullMessage = String.format("%s%nUsage: %s", message, help());
         return new CommandLineParsingException(this, fullMessage);
     }
 
@@ -98,7 +103,29 @@ public record CommandLineDefinition(String programName, @Nullable Parameter para
 
     }
 
-    record Parameter(String name, String description, boolean required, boolean list, List<String> defaultValue) {
+    record Option(List<String> names,
+                  String description,
+                  @Nullable String argName,
+                  @Nullable String defaultValue) {
+        String help() {
+            String h = String.join(", ", names);
+            if (argName != null) {
+                h += " ";
+                if (defaultValue != null) h += "[";
+                h += "<" + argName + ">";
+                if (defaultValue != null) h += "]";
+            }
+            if (description != null)
+                h += " : " + description;
+            return h;
+        }
+    }
+
+    record Parameter(String name,
+                     String description,
+                     boolean required,
+                     boolean list,
+                     List<String> defaultValue) {
         String help() {
             String h;
             if (required) {
@@ -113,18 +140,92 @@ public record CommandLineDefinition(String programName, @Nullable Parameter para
         }
     }
 
-    record Option(List<String> names, @Nullable String description, @Nullable String argName, @Nullable String defaultValue) {
-        String help() {
-            String h = String.join(", ", names);
-            if (argName != null) {
-                h += " ";
-                if (defaultValue != null) h += "[";
-                h += "<" + argName + ">";
-                if (defaultValue != null) h += "]";
-            }
-            if (description != null)
-                h += " : " + description;
-            return h;
+    static Builder builder(String programName) {
+        return new Builder(programName);
+    }
+
+    public static final class Builder {
+        private final String programName;
+        private CommandLineDefinition.Parameter parameter;
+        private final List<Option> options = new ArrayList<>();
+
+        private Builder(String programName) {
+            this.programName = Objects.requireNonNull(programName, "programName is null");
+        }
+
+        public Builder withOption(String name, String description) {
+            return withOption(name, description, null, null);
+        }
+
+        public Builder withOption(String name, String description, String argName) {
+            return withOption(name, description, argName, null);
+        }
+
+        public Builder withOption(Collection<String> names, String description) {
+            return withOption(names, description, null, null);
+        }
+
+        public Builder withOption(Collection<String> names, String description, String argName) {
+            return withOption(names, description, argName, null);
+        }
+
+        public Builder withOption(String name, String description, String argName, String defaultValue) {
+            return withOption(List.of(name), description, argName, defaultValue);
+        }
+
+        public Builder withOption(Collection<String> names, String description, String argName, String defaultValue) {
+            Objects.requireNonNull(names, "names is null");
+            if (names.isEmpty())
+                throw new IllegalArgumentException("names is empty");
+            if (description == null)
+                description = "";
+            options.add(new Option(List.copyOf(names), description, argName, defaultValue));
+            return this;
+        }
+
+        public Builder withParameter(String name, String description, String defaultValue) {
+            parameter = new CommandLineDefinition.Parameter(name, description, false, false, List.of(defaultValue));
+            return this;
+        }
+
+        public Builder withParameter(String name, String description) {
+            parameter = new CommandLineDefinition.Parameter(name, description, true, false, List.of());
+            return this;
+        }
+
+        public Builder withParameters(String name, String description, List<String> defaultValues) {
+            parameter = new CommandLineDefinition.Parameter(name, description, false, true, List.copyOf(defaultValues));
+            return this;
+        }
+
+        public Builder withParameters(String name, String description) {
+            parameter = new CommandLineDefinition.Parameter(name, description, true, true, List.of());
+            return this;
+        }
+
+        /**
+         * Parse the given arguments using the current command line definition.
+         *
+         * @param args the program arguments
+         * @return the parsed command line
+         * @throws CommandLineParsingException if the arguments does not match the command line definition
+         */
+        public CommandLine parse(String... args) throws CommandLineParsingException {
+            return build().parse(args);
+        }
+
+        /**
+         * Build the {@link CommandLineDefinition} that can be reused for parsing arguments.
+         *
+         * @return A command line definition.
+         */
+        public CommandLineDefinition build() {
+            Map<String, Option> optionsMap = new LinkedHashMap<>(options.size());
+            options.forEach(option -> option.names().forEach(name -> {
+                if (optionsMap.putIfAbsent(name, option) != null)
+                    System.err.println("Duplicate option name " + name);
+            }));
+            return new CommandLineDefinition(programName, parameter, options, optionsMap);
         }
     }
 

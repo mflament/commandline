@@ -39,20 +39,43 @@ class CommandLineTest {
     }
 
     @Test
-    void parse() {
+    void parseWithOptions() {
         CommandLineDefinition definition = createDefinition();
-        CommandLine parsed = definition.parse("-m", "512", "out.txt");
+        CommandLine parsed = definition.parse("-m", "512", "-v", "out.txt");
 
-        assertFalse(parsed.hasOption("-v"));
+        assertTrue(parsed.hasOption("-v"));
         assertNull(parsed.option("-v"));
 
         assertTrue(parsed.hasOption("-m"));
+        assertEquals("512", parsed.option("-m"));
         int ms = parsed.parseOption("-m", Integer::parseInt);
         assertEquals(512, ms);
 
         assertTrue(parsed.hasOption("--maxSize"));
+        assertEquals("512", parsed.option("--maxSize"));
         ms = parsed.parseOption("--maxSize", Integer::parseInt);
         assertEquals(512, ms);
+
+        assertEquals("out.txt", parsed.parameter());
+    }
+
+    @Test
+    void parseDefault() {
+        CommandLineDefinition definition = createDefinition();
+        CommandLine parsed = definition.parse("out.txt");
+
+        assertFalse(parsed.hasOption("-v"));
+        assertNull(parsed.option("-v"));
+
+        assertFalse(parsed.hasOption("-m"));
+        assertEquals("1024", parsed.option("-m"));
+        int ms = parsed.parseOption("-m", Integer::parseInt);
+        assertEquals(1024, ms);
+
+        assertFalse(parsed.hasOption("--maxSize"));
+        assertEquals("1024", parsed.option("--maxSize"));
+        ms = parsed.parseOption("--maxSize", Integer::parseInt);
+        assertEquals(1024, ms);
 
         assertEquals("out.txt", parsed.parameter());
     }
@@ -61,7 +84,7 @@ class CommandLineTest {
     void parsingError() {
         CommandLineDefinition definition = createDefinition();
         // missing arg value
-        assertThrows(CommandLineParsingException.class, () -> definition.parse("-m"));
+        assertThrows(CommandLineParsingException.class, () -> definition.parse("-v", "-m"));
 
         // missing parameter
         assertThrows(CommandLineParsingException.class, () -> definition.parse("-m", "512"));
@@ -75,5 +98,18 @@ class CommandLineTest {
                 .build();
     }
 
+
+    public static void main(String[] args) {
+        CommandLine commandLine = CommandLine.define("myProgram")
+                .withOption(List.of("-m", "--maxSize"), "max file size in KB", "size", "1024")
+                .withOption("-v", "verbose")
+                .withParameter("file", "The output file", "out.txt")
+                .parse(args);
+
+        boolean verbose = commandLine.hasOption("-v");
+        int maxSize = commandLine.parseOption("--maxSize", Integer::parseInt);
+        String parameter = commandLine.parameter();
+        System.out.printf("verbose: %s maxSize: %d parameter: %s%n", verbose, maxSize, parameter);
+    }
 
 }
