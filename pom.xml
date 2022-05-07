@@ -4,13 +4,13 @@
 
     <groupId>org.yah.tools</groupId>
     <artifactId>commandline</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
 	<name>commandline parser</name>
 	<description>A simple command line arguments parser</description>
 
     <scm>
         <developerConnection>scm:git:git@github.com:mflament/commandline.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>1.0</tag>
     </scm>
 
     <distributionManagement>
